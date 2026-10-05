@@ -80,24 +80,54 @@ def fallback_split(
     return chunks
 
 
+MAX_CHUNK = 700   # characters; the longest post in campus_life is 549
+MIN_CHUNK = 150   # a chunk shorter than this is a fragment, so it gets merged back
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Paragraph-aware chunker for campus_life.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
-
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    One post is one chunk. Every post here is a title line plus one to three
+    short paragraphs and the useful fact sits in a single sentence, so cutting
+    inside a post only separates a fact from its title. A post is split only if
+    it passes MAX_CHUNK, and only at a blank line (never mid-sentence), with the
+    title repeated at the top of each piece so a continuation still says what it
+    is about. Overlap is 0: cuts fall on paragraph boundaries, so there is no
+    half-sentence to repeat. A trailing piece under MIN_CHUNK is merged back into
+    the one before it.
     """
-    return fallback_split(documents)
+    chunks: list[Chunk] = []
+    for doc in documents:
+        paragraphs = [p.strip() for p in doc.text.split("\n\n") if p.strip()]
+        if not paragraphs:
+            continue
+        title, body = paragraphs[0], paragraphs[1:]
+
+        pieces: list[str] = []
+        current = title
+        for para in body:
+            if len(current) + 2 + len(para) <= MAX_CHUNK or current == title:
+                current = f"{current}\n\n{para}"
+            else:
+                pieces.append(current)
+                current = f"{title}\n\n{para}"
+        pieces.append(current)
+
+        if len(pieces) > 1 and len(pieces[-1]) < MIN_CHUNK:
+            tail = pieces.pop().split("\n\n", 1)[1]
+            pieces[-1] = f"{pieces[-1]}\n\n{tail}"
+
+        for index, text in enumerate(pieces):
+            chunks.append(
+                Chunk(
+                    text=text,
+                    source=doc.source,
+                    index=index,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
