@@ -43,7 +43,12 @@ TOP_K = 5               # how many chunks to pull back per question
 # 0.6 is a reasonable starting point, not a right answer. Milestone 4 has you
 # measure your own two groups of distances and put the cutoff in the gap.
 # Most corpora land somewhere between 0.45 and 0.75.
-THRESHOLD = 0.6
+#
+# Unit 2: lowered from 0.6 to 0.5. Campus-flavoured questions that no post
+# answers ("what time does the gym open?") score 0.517 to 0.788, so at 0.6 the
+# gate let three of five through. Everything my five test questions need scores
+# 0.412 or better. See README, "The Improvement".
+THRESHOLD = 0.5
 
 
 # ─── Models ──────────────────────────────────────────────────────────────────
