@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+Vaishnavi Veeranki — corpus: `campus_life`
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,26 +21,16 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+The Unofficial Guide answers questions about student life at a university, using only a corpus of 88 short posts written by students (`campus_life`): dining halls, residence halls, courses, and the administrative rules nobody explains properly. You ask a plain-language question such as "Until which week can I withdraw from a course?" and the system retrieves the closest posts, answers from them only, and names the file it used. If your question is about something the posts don't cover, it refuses with "I don't have enough information about that" instead of guessing.
 
 ## Chunking Strategy
 
-**Chunk size:**
-**Overlap:**
+**Chunk size:** one post per chunk, with a ceiling of 700 characters and a floor of 150. Posts in `campus_life` run 178 to 549 characters, so none is ever cut.
+**Overlap:** 0
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+I read a dozen posts first. Each is a title line plus one to three short paragraphs, and the fact someone would ask about sits in one sentence (for example "Withdrawal runs to week ten"). The starter's 800-character window never cut anything: 88 documents came out as 88 chunks. That is the right outcome for these documents, because cutting inside a post would separate a fact from its title and the context around it, which is what makes a chunk answerable on its own.
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
-
-     Milestone 3. -->
+So my chunker keeps one post as one chunk and only splits when a post passes 700 characters. It splits at a blank line, never mid-sentence, and repeats the title at the top of each piece. Overlap is 0 because cuts fall on paragraph boundaries and there is no half-sentence to repeat. A trailing piece under 150 characters is merged back into the previous one. On this corpus it produces the same 88 chunks as the starter (shortest 178, longest 549 characters), so I did not change my mind about the result. The rule matters if I add a longer document.
 
 ## Sample Chunks
 
@@ -53,29 +43,52 @@
 
      Milestone 3. -->
 
-**Chunk 1** — source: `` — produced by: ``
+**Chunk 1** — source: `admin_housing_lottery.txt` — produced by: `chunker.py::split_documents`
 
 ```
+On the housing lottery
+
+The housing lottery is not random in the way most people assume. Rising sophomores get a number drawn at random, but juniors and seniors are ordered by accumulated credit hours first, and only tie-break randomly. That means a senior who took summer courses reliably beats a senior who didn't. Numbers come out the second week of March and selection runs over four evenings.
 ```
 
-**Chunk 2** — source: `` — produced by: ``
+**Chunk 2** — source: `dining_kestrel_commons.txt` — produced by: `chunker.py::split_documents`
 
 ```
+Kestrel Commons
+
+I'm a junior and I've done this twice now. Wait times: 20 to 25 minutes between 12:15 and 1:00, under 5 minutes before 11:45. The thing worth going for is the stir-fry station, made to order. The thing to know is that the salad bar wilts after 1:30.
+
+Hours are 7:00am to 9:00pm weekdays, 9:00am to 8:00pm weekends. Costs one meal swipe, or $12.50 cash.
 ```
 
-**Chunk 3** — source: `` — produced by: ``
+**Chunk 3** — source: `course_cs_210_exams.txt` — produced by: `chunker.py::split_documents`
 
 ```
+CS 210 Data Structures — assessment
+
+Two midterms and a final, all drawn from lecture material rather than the textbook. Midterms are curved, the final is not.
+
+Do the labs even though they're only 10% — the exams reuse the lab problems.
 ```
 
-**Chunk 4** — source: `` — produced by: ``
+**Chunk 4** — source: `housing_tamsin_court_laundry.txt` — produced by: `chunker.py::split_documents`
 
 ```
+Laundry in Tamsin Court
+
+Machines take in-unit washer-dryer. There are eight washers and six dryers for the building, which is the wrong ratio and means the dryers back up on Sunday evenings.
+
+Best time to do laundry here is Tuesday or Wednesday morning. Sunday after 6pm you will wait.
 ```
 
-**Chunk 5** — source: `` — produced by: ``
+**Chunk 5** — source: `transit_shuttle.txt` — produced by: `chunker.py::split_documents`
 
 ```
+The campus shuttle
+
+Runs a loop every 20 minutes from 7am to 11pm on weekdays and every 40 minutes on weekends. The published timetable is optimistic by about five minutes in the morning and accurate the rest of the day.
+
+It's free with a student ID. The stop outside Fenwick Court is the one that gets skipped when the driver is behind, which is worth knowing if you live there.
 ```
 
 ## Sample Answer
@@ -83,27 +96,38 @@
 <!-- One complete question and answer, pasted as text, with the source line
      visible. Milestone 4. -->
 
-**Question:**
+**Question:** How are juniors and seniors ordered in the housing lottery?
 
 **Answer:**
 
 ```
+$ python app.py ask "How are juniors and seniors ordered in the housing lottery?"
+
+  (best distance 0.225, cutoff 0.6)
+
+Juniors and seniors are ordered by accumulated credit hours first, with a random tie-break used only when necessary.
+
+Source: admin_housing_lottery.txt
+
+Sources retrieved: admin_housing_lottery.txt, admin_parking_permits.txt, advising_registration.txt, housing_old_brewhouse.txt, housing_tamsin_court.txt
 ```
 
-**My relevance cutoff:**
+**My relevance cutoff:** 0.6, the starter's default, kept on purpose.
 
-<!-- The number you set in config.py, and how you got there.
-
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
-
-     Milestone 4. -->
+I ran my five test questions and the five `OUT_OF_SCOPE` questions through retrieval (top-k 5) and recorded the best distance for each. The in-corpus questions all landed between 0.218 and 0.412. The out-of-scope questions all landed between 0.825 and 0.934. The gap runs from 0.41 to 0.82, so 0.6 sits inside it with about 0.2 to spare on each side. I did not need to move it. In all five test questions the chunk containing the `expects` phrase appeared in the top 5, and it ranked first every time. The withdrawal question had the loosest best distance (0.412) because the add/drop and pass/fail posts talk about the same topic. I left top-k at 5. The grounding instruction in `generate.py` (use only the documents, say so when they don't cover it, name the file) already produced a cited answer, so I left it alone.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
-|  |  |  |
+| How are juniors and seniors ordered in the housing lottery? | yes | 0.225 |
+| What happens to dining dollars that are left over in May? | yes | 0.218 |
+| How long is the wait at Kestrel Commons around 12:30? | yes | 0.222 |
+| What is the latest week I can make a course pass/fail? | yes | 0.266 |
+| Until which week can I withdraw from a course? | yes | 0.412 |
+| What is the capital of Mongolia? | no | 0.825 |
+| How do I change the oil in a diesel engine? | no | 0.934 |
+| Who won the 1994 World Cup? | no | 0.886 |
+| What is the recommended dosage of ibuprofen for a headache? | no | 0.844 |
+| How do I write a for loop in Rust? | no | 0.896 |
 
 ## How I Used AI
 
@@ -116,9 +140,9 @@
 
      Milestone 5. -->
 
-**1.**
+**1. The chunker.** I asked Claude to replace the body of `split_documents` after I'd read the corpus and decided one post should stay one chunk. It wrote a paragraph-aware splitter with a 700-character ceiling, a 150-character floor, and the title repeated at the top of any continuation. When I ran it, it produced exactly the same 88 chunks as the starter (shortest 178, longest 549), so on `campus_life` it never splits anything. I kept it anyway: the finding is that the starter was already right for these posts, and the splitter now handles a longer post without cutting mid-sentence. I rewrote the Chunking Strategy section to say this plainly instead of claiming the new code improved the chunks.
 
-**2.**
+**2. The cutoff.** I asked Claude to write five specific test questions from the posts, with an `expects` phrase for each, and then to run them and the five out-of-scope questions through retrieval and print the distances. Retrieval put the right chunk in the top 5 for all five questions, and the two groups of distances were far apart (0.218 to 0.412 against 0.825 to 0.934). I had expected to have to tune the 0.6 default, but there was nothing to tune, so I kept it and recorded the ten numbers as the evidence. The withdrawal question, at 0.412, was the weakest, because the add/drop and pass/fail posts discuss the same topic. That is why criterion 1 allows one miss.
 
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
